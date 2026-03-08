@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Secure Password Generator</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="panel" aria-label="Password generator">
+        <header class="panel__header">
+          <p class="kicker">Inspired by Bitwarden</p>
+          <h1>Secure Password Generator</h1>
+          <p class="subhead">Generate random passwords and passphrases with secure defaults.</p>
+        </header>
+
+        <section class="output" aria-live="polite">
+          <label for="generatedValue">Generated value</label>
+          <div class="output__row">
+            <input id="generatedValue" type="text" readonly spellcheck="false" autocomplete="off" />
+            <button id="copyBtn" class="btn btn--ghost" type="button">Copy</button>
+            <button id="regenerateBtn" class="btn" type="button">Regenerate</button>
+          </div>
+          <p id="copyStatus" class="helper" role="status">Ready.</p>
+        </section>
+
+        <section class="strength" aria-label="Password strength">
+          <div class="strength__top">
+            <span>Strength</span>
+            <strong id="strengthLabel">-</strong>
+          </div>
+          <div class="meter" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div id="meterFill" class="meter__fill"></div>
+          </div>
+          <p class="helper"><span id="entropyBits">0.0</span> bits of entropy</p>
+          <p id="strengthHint" class="hint">Increase length for the biggest security gain.</p>
+        </section>
+
+        <section class="controls" aria-label="Generator options">
+          <fieldset class="group">
+            <legend>Mode</legend>
+            <label class="choice"><input type="radio" name="mode" value="password" checked /> Password</label>
+            <label class="choice"><input type="radio" name="mode" value="passphrase" /> Passphrase</label>
+          </fieldset>
+
+          <div class="group">
+            <div class="slider-head">
+              <label for="lengthRange" id="lengthLabel">Length</label>
+              <output id="lengthValue" for="lengthRange">16</output>
+            </div>
+            <input id="lengthRange" type="range" min="4" max="64" value="16" />
+            <p id="lengthHint" class="helper">Longer passwords improve entropy more than adding symbols alone.</p>
+          </div>
+
+          <fieldset id="passwordOptions" class="group">
+            <legend>Characters</legend>
+            <label class="choice"><input id="includeUppercase" type="checkbox" checked /> Uppercase (A-Z)</label>
+            <label class="choice"><input id="includeLowercase" type="checkbox" checked /> Lowercase (a-z)</label>
+            <label class="choice"><input id="includeNumbers" type="checkbox" checked /> Numbers (0-9)</label>
+            <label class="choice"><input id="includeSpecial" type="checkbox" checked /> Special (!@#$%^&*)</label>
+            <label class="choice"><input id="avoidAmbiguous" type="checkbox" /> Avoid ambiguous (l, I, O, 0, 1, |)</label>
+          </fieldset>
+
+          <fieldset id="passphraseOptions" class="group hidden">
+            <legend>Passphrase</legend>
+            <label class="choice"><input id="capitalizeWords" type="checkbox" checked /> Capitalize each word</label>
+            <label class="choice"><input id="appendNumber" type="checkbox" /> Append random number</label>
+            <label class="choice" for="separatorSelect">Separator
+              <select id="separatorSelect">
+                <option value="-">Hyphen (-)</option>
+                <option value=" ">Space</option>
+                <option value="_">Underscore (_)</option>
+                <option value=".">Dot (.)</option>
+              </select>
+            </label>
+          </fieldset>
+        </section>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
