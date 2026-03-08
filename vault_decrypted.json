@@ -1,0 +1,21 @@
+{
+  "description": "DEMO ONLY — Unencrypted credit card vault (plaintext)",
+  "cards": [
+    {
+      "nickname": "Nick",
+      "holder": "Test",
+      "number": "4242424242424242",
+      "expiry": "01/10",
+      "cvv": "123",
+      "provider": "Visa"
+    },
+    {
+      "nickname": "NIcke 2",
+      "holder": "Testing Testing",
+      "number": "4242424242424242",
+      "expiry": "01/22",
+      "cvv": "123",
+      "provider": "Visa"
+    }
+  ]
+}

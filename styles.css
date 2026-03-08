@@ -221,6 +221,271 @@ input[type="range"] {
   width: 100%;
 }
 
+/* Tab bar */
+.tab-bar {
+  display: flex;
+  gap: 4px;
+  background: #e8edf7;
+  border-radius: 12px;
+  padding: 4px;
+}
+
+.tab {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.93rem;
+  padding: 10px 8px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.tab:hover {
+  color: var(--ink);
+}
+
+.tab--active {
+  background: var(--panel);
+  color: var(--accent-2);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+/* Vault */
+.vault-section {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+  background: #fcfdff;
+  display: grid;
+  gap: 12px;
+}
+
+.vault-title {
+  font-family: "Sora", sans-serif;
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.vault-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.vault-unlock-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.btn--sm {
+  min-height: 36px;
+  font-size: 0.88rem;
+  padding: 0 10px;
+}
+
+.btn--full {
+  width: 100%;
+}
+
+.card-form-wrapper {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  background: white;
+}
+
+.card-form {
+  display: grid;
+  gap: 12px;
+}
+
+.form-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.card-number-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.card-number-row input {
+  flex: 1;
+  padding-right: 110px !important;
+}
+
+.provider-badge {
+  position: absolute;
+  right: 10px;
+  font-weight: 700;
+  font-size: 0.82rem;
+  padding: 3px 8px;
+  border-radius: 6px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.provider-badge:empty {
+  display: none;
+}
+
+.provider-badge[data-provider="visa"] {
+  background: #1a1f71;
+  color: #fff;
+}
+
+.provider-badge[data-provider="mastercard"] {
+  background: #eb001b;
+  color: #fff;
+}
+
+.provider-badge[data-provider="amex"] {
+  background: #2e77bc;
+  color: #fff;
+}
+
+.provider-badge[data-provider="discover"] {
+  background: #ff6000;
+  color: #fff;
+}
+
+.provider-badge[data-provider="diners"] {
+  background: #0079be;
+  color: #fff;
+}
+
+.provider-badge[data-provider="jcb"] {
+  background: #0b7b32;
+  color: #fff;
+}
+
+.provider-badge[data-provider="unionpay"] {
+  background: #d41a30;
+  color: #fff;
+}
+
+.provider-badge[data-provider="unknown"] {
+  background: #e8edf7;
+  color: var(--muted);
+}
+
+.stored-card__provider {
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: #e8edf7;
+  color: var(--muted);
+}
+
+.input-error {
+  border-color: var(--danger) !important;
+  outline: 2px solid var(--danger);
+  outline-offset: -1px;
+}
+
+.form-field {
+  display: grid;
+  gap: 4px;
+}
+
+.form-field input {
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0 12px;
+  font: inherit;
+  color: var(--ink);
+  background: white;
+}
+
+.form-field input:focus {
+  outline: 2px solid color-mix(in oklab, var(--accent), white 30%);
+  outline-offset: 2px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+/* Stored card list */
+.card-list {
+  display: grid;
+  gap: 10px;
+}
+
+.stored-card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px;
+  background: linear-gradient(135deg, #f0f4ff, #f8faff);
+  display: grid;
+  gap: 8px;
+}
+
+.stored-card__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stored-card__nickname {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.stored-card__actions {
+  display: flex;
+  gap: 6px;
+}
+
+.stored-card__actions button {
+  border: 0;
+  background: #eef4ff;
+  color: var(--accent-2);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.stored-card__actions button:hover {
+  background: #e4efff;
+}
+
+.stored-card__actions .btn--danger {
+  color: var(--danger);
+}
+
+.stored-card__detail {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  font-size: 0.9rem;
+}
+
+.stored-card__detail span {
+  color: var(--muted);
+}
+
+.stored-card__detail strong {
+  font-family: "Space Grotesk", monospace;
+}
+
+.center {
+  text-align: center;
+}
+
 .hidden {
   display: none;
 }
@@ -237,5 +502,9 @@ input[type="range"] {
   .choice select {
     width: 100%;
     margin-left: 0;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
   }
 }

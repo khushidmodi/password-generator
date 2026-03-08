@@ -15,6 +15,13 @@
           <p class="subhead">Generate random passwords and passphrases with secure defaults.</p>
         </header>
 
+        <nav class="tab-bar" aria-label="Features">
+          <button class="tab tab--active" data-tab="generator">Password Generator</button>
+          <button class="tab" data-tab="vault">Credit Card Vault</button>
+        </nav>
+
+        <div id="generatorTab">
+
         <section class="output" aria-live="polite">
           <label for="generatedValue">Generated value</label>
           <div class="output__row">
@@ -76,6 +83,69 @@
             </label>
           </fieldset>
         </section>
+        </div>
+
+        <div id="vaultTab" class="hidden">
+          <section id="vaultLock" class="vault-section">
+            <h2 class="vault-title">Credit Card Vault</h2>
+            <p class="helper">Enter a master password to encrypt and protect your stored cards.</p>
+            <div class="vault-unlock-row">
+              <input id="masterPassword" type="password" placeholder="Master password" autocomplete="off" />
+              <button id="unlockVaultBtn" class="btn" type="button">Unlock</button>
+            </div>
+            <p id="vaultStatus" class="helper" role="status"></p>
+          </section>
+
+          <section id="vaultContent" class="vault-section hidden">
+            <div class="vault-header">
+              <h2 class="vault-title">Your Cards</h2>
+              <button id="lockVaultBtn" class="btn btn--ghost btn--sm" type="button">Lock Vault</button>
+            </div>
+
+            <button id="showCardFormBtn" class="btn btn--ghost btn--full" type="button">+ Add New Card</button>
+            <div id="cardFormWrapper" class="card-form-wrapper hidden">
+              <form id="addCardForm" class="card-form">
+                <div class="form-field">
+                  <label for="cardNickname">Nickname</label>
+                  <input id="cardNickname" type="text" placeholder="e.g. Personal Visa" autocomplete="off" />
+                </div>
+                <div class="form-field">
+                  <label for="cardHolder">Cardholder Name</label>
+                  <input id="cardHolder" type="text" placeholder="Full name on card" autocomplete="off" required />
+                </div>
+                <div class="form-field">
+                  <label for="cardNumber">Card Number</label>
+                  <div class="card-number-row">
+                    <input id="cardNumber" type="text" placeholder="1234 5678 9012 3456" maxlength="19" autocomplete="off" required />
+                    <span id="cardProviderBadge" class="provider-badge"></span>
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-field">
+                    <label for="cardExpiry">Expiry (MM/YY)</label>
+                    <input id="cardExpiry" type="text" placeholder="MM/YY" maxlength="5" autocomplete="off" required />
+                  </div>
+                  <div class="form-field">
+                    <label for="cardCVV">CVV</label>
+                    <input id="cardCVV" type="password" placeholder="***" maxlength="4" autocomplete="off" required />
+                  </div>
+                </div>
+                <div class="form-actions">
+                  <button type="submit" class="btn btn--full">Save Card</button>
+                  <button id="cancelCardBtn" type="button" class="btn btn--ghost btn--full">Cancel</button>
+                </div>
+              </form>
+            </div>
+
+            <div id="cardList" class="card-list"></div>
+            <p id="noCards" class="helper center">No cards stored yet.</p>
+
+            <div id="exportButtons" class="export-row hidden">
+              <button id="exportEncBtn" class="btn btn--ghost btn--sm" type="button">Download Encrypted</button>
+              <button id="exportDecBtn" class="btn btn--ghost btn--sm" type="button">Download Decrypted (Demo)</button>
+            </div>
+          </section>
+        </div>
       </section>
     </main>
 
