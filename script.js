@@ -1,7 +1,13 @@
 const generatedValueEl = document.getElementById("generatedValue");
 const copyBtn = document.getElementById("copyBtn");
+const saveBtn = document.getElementById("saveBtn");
 const regenerateBtn = document.getElementById("regenerateBtn");
 const copyStatusEl = document.getElementById("copyStatus");
+const saveFormEl = document.getElementById("saveForm");
+const saveWebsiteEl = document.getElementById("saveWebsite");
+const saveUsernameEl = document.getElementById("saveUsername");
+const savePasswordEl = document.getElementById("savePassword");
+const cancelSaveBtn = document.getElementById("cancelSaveBtn");
 
 const modeEls = document.querySelectorAll("input[name='mode']");
 const lengthRangeEl = document.getElementById("lengthRange");
@@ -282,6 +288,53 @@ async function copyGeneratedValue() {
   }
 }
 
+function openSaveForm() {
+  const value = generatedValueEl.value;
+  if (!value) {
+    copyStatusEl.textContent = "Generate a password before saving.";
+    return;
+  }
+
+  savePasswordEl.value = value;
+  saveFormEl.classList.remove("hidden");
+  saveWebsiteEl.focus();
+}
+
+function closeSaveForm() {
+  saveFormEl.reset();
+  savePasswordEl.value = "";
+  saveFormEl.classList.add("hidden");
+}
+
+async function saveGeneratedPassword(event) {
+  event.preventDefault();
+
+  const website = saveWebsiteEl.value.trim();
+  const username = saveUsernameEl.value.trim();
+  const password = savePasswordEl.value;
+
+  if (!website || !username || !password) {
+    copyStatusEl.textContent = "Website and username are required.";
+    return;
+  }
+
+  passwordRecords.push({
+    website,
+    username,
+    password,
+    created_at: new Date().toISOString()
+  });
+
+  try {
+    await savePasswordRecords();
+    renderPasswordRecords();
+    copyStatusEl.textContent = `Saved password for ${website} (${username}).`;
+    closeSaveForm();
+  } catch (_) {
+    copyStatusEl.textContent = "Failed to save password record.";
+  }
+}
+
 lengthRangeEl.addEventListener("input", () => {
   lengthValueEl.textContent = lengthRangeEl.value;
   regenerate();
@@ -289,6 +342,9 @@ lengthRangeEl.addEventListener("input", () => {
 
 regenerateBtn.addEventListener("click", regenerate);
 copyBtn.addEventListener("click", copyGeneratedValue);
+saveBtn.addEventListener("click", openSaveForm);
+cancelSaveBtn.addEventListener("click", closeSaveForm);
+saveFormEl.addEventListener("submit", saveGeneratedPassword);
 
 for (const el of modeEls) {
   el.addEventListener("change", () => {
@@ -321,6 +377,7 @@ regenerate();
 // ─── Tab Navigation ───────────────────────────────────────────────
 const tabs = document.querySelectorAll(".tab");
 const generatorTab = document.getElementById("generatorTab");
+const passwordVaultTab = document.getElementById("passwordVaultTab");
 const vaultTab = document.getElementById("vaultTab");
 
 tabs.forEach((tab) => {
@@ -329,6 +386,7 @@ tabs.forEach((tab) => {
     tab.classList.add("tab--active");
     const target = tab.dataset.tab;
     generatorTab.classList.toggle("hidden", target !== "generator");
+    passwordVaultTab.classList.toggle("hidden", target !== "password-vault");
     vaultTab.classList.toggle("hidden", target !== "vault");
   });
 });
@@ -336,6 +394,8 @@ tabs.forEach((tab) => {
 // ─── Credit Card Vault (AES-GCM encrypted localStorage) ──────────
 const VAULT_STORAGE_KEY = "cc_vault_enc";
 const VAULT_SALT_KEY = "cc_vault_salt";
+const PASSWORD_STORAGE_KEY = "password_records_enc";
+const PASSWORD_KEY_STORAGE_KEY = "password_records_key";
 
 const masterPasswordEl = document.getElementById("masterPassword");
 const unlockVaultBtn = document.getElementById("unlockVaultBtn");
@@ -356,9 +416,13 @@ const cardHolderEl = document.getElementById("cardHolder");
 const cardNumberEl = document.getElementById("cardNumber");
 const cardExpiryEl = document.getElementById("cardExpiry");
 const cardCVVEl = document.getElementById("cardCVV");
+const passwordRecordListEl = document.getElementById("passwordRecordList");
+const noPasswordRecordsEl = document.getElementById("noPasswordRecords");
 
 let vaultKey = null;
 let vaultCards = [];
+let passwordRecords = [];
+let passwordKey = null;
 
 function buf2hex(buffer) {
   return [...new Uint8Array(buffer)].map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -415,8 +479,7 @@ async function saveVaultToFiles(encryptedData) {
       body: JSON.stringify({
         encrypted: {
           algorithm: "AES-256-GCM",
-          key_derivation: "PBKDF2 (600000 iterations, SHA-256)",
-          salt: localStorage.getItem(VAULT_SALT_KEY),
+          key_management: "Random AES key generated once and stored in localStorage",
           encrypted_data: encryptedData
         },
         decrypted: {
@@ -434,6 +497,127 @@ async function saveVault() {
   const encrypted = await encryptVault(vaultKey, vaultCards);
   localStorage.setItem(VAULT_STORAGE_KEY, encrypted);
   await saveVaultToFiles(encrypted);
+}
+
+async function savePasswordRecordsToFiles(encryptedData) {
+  try {
+    await fetch("/save-password-records", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        encrypted: {
+          algorithm: "AES-256-GCM",
+          key_derivation: "PBKDF2 (600000 iterations, SHA-256)",
+          salt: localStorage.getItem(VAULT_SALT_KEY),
+          encrypted_data: encryptedData
+        },
+        decrypted: {
+          description: "DEMO ONLY — Unencrypted password records (plaintext)",
+          records: passwordRecords
+        }
+      })
+    });
+  } catch (_) {
+    // Server not running, localStorage still works
+  }
+}
+
+async function savePasswordRecords() {
+  if (!passwordKey) {
+    passwordKey = await getOrCreatePasswordRecordsKey();
+  }
+  const encrypted = await encryptVault(passwordKey, passwordRecords);
+  localStorage.setItem(PASSWORD_STORAGE_KEY, encrypted);
+  await savePasswordRecordsToFiles(encrypted);
+}
+
+async function loadPasswordRecords() {
+  if (!passwordKey) {
+    passwordKey = await getOrCreatePasswordRecordsKey();
+  }
+  const stored = localStorage.getItem(PASSWORD_STORAGE_KEY);
+  if (!stored) {
+    passwordRecords = [];
+    return;
+  }
+
+  try {
+    passwordRecords = await decryptVault(passwordKey, stored);
+    if (!Array.isArray(passwordRecords)) {
+      passwordRecords = [];
+    }
+  } catch (_) {
+    passwordRecords = [];
+  }
+}
+
+async function getOrCreatePasswordRecordsKey() {
+  const storedKeyHex = localStorage.getItem(PASSWORD_KEY_STORAGE_KEY);
+  if (storedKeyHex) {
+    return crypto.subtle.importKey(
+      "raw",
+      hex2buf(storedKeyHex),
+      { name: "AES-GCM" },
+      false,
+      ["encrypt", "decrypt"]
+    );
+  }
+
+  const key = await crypto.subtle.generateKey(
+    { name: "AES-GCM", length: 256 },
+    true,
+    ["encrypt", "decrypt"]
+  );
+  const rawKey = await crypto.subtle.exportKey("raw", key);
+  localStorage.setItem(PASSWORD_KEY_STORAGE_KEY, buf2hex(rawKey));
+  return key;
+}
+
+function renderPasswordRecords() {
+  passwordRecordListEl.innerHTML = "";
+  noPasswordRecordsEl.classList.toggle("hidden", passwordRecords.length > 0);
+
+  passwordRecords.forEach((record) => {
+    const item = document.createElement("article");
+    item.className = "password-record";
+    const site = document.createElement("p");
+    site.className = "password-record__site";
+    site.textContent = record.website || "Unknown site";
+
+    const detail = document.createElement("div");
+    detail.className = "password-record__detail";
+
+    const usernameLabel = document.createElement("span");
+    usernameLabel.textContent = "Username";
+    const usernameValue = document.createElement("strong");
+    usernameValue.textContent = record.username || "-";
+
+    const passwordLabel = document.createElement("span");
+    passwordLabel.textContent = "Password";
+
+    const passwordWrap = document.createElement("div");
+    passwordWrap.className = "password-record__password-wrap";
+    const passwordValue = document.createElement("strong");
+    const rawPassword = record.password || "";
+    let revealed = false;
+    passwordValue.textContent = rawPassword ? "*".repeat(rawPassword.length) : "-";
+
+    const toggleBtn = document.createElement("button");
+    toggleBtn.type = "button";
+    toggleBtn.className = "password-toggle-btn";
+    toggleBtn.textContent = "Show";
+    toggleBtn.addEventListener("click", () => {
+      revealed = !revealed;
+      passwordValue.textContent = revealed ? rawPassword : "*".repeat(rawPassword.length);
+      toggleBtn.textContent = revealed ? "Hide" : "Show";
+      toggleBtn.setAttribute("aria-pressed", String(revealed));
+    });
+
+    passwordWrap.append(passwordValue, toggleBtn);
+    detail.append(usernameLabel, usernameValue, passwordLabel, passwordWrap);
+    item.append(site, detail);
+    passwordRecordListEl.appendChild(item);
+  });
 }
 
 function maskCardNumber(num) {
@@ -703,3 +887,8 @@ addCardFormEl.addEventListener("submit", async (e) => {
   cardProviderBadge.removeAttribute("data-provider");
   vaultStatusEl.textContent = "Card saved securely.";
 });
+
+(async () => {
+  await loadPasswordRecords();
+  renderPasswordRecords();
+})();

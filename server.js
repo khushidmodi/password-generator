@@ -32,6 +32,25 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // Handle password record file saves
+  if (req.method === "POST" && req.url === "/save-password-records") {
+    let body = "";
+    req.on("data", (chunk) => (body += chunk));
+    req.on("end", () => {
+      try {
+        const { encrypted, decrypted } = JSON.parse(body);
+        fs.writeFileSync(path.join(DIR, "password-records-encrypted.json"), JSON.stringify(encrypted, null, 2));
+        fs.writeFileSync(path.join(DIR, "password-records-plaintext.json"), JSON.stringify(decrypted, null, 2));
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: true }));
+      } catch (e) {
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    });
+    return;
+  }
+
   // Serve static files
   let filePath = path.join(DIR, req.url === "/" ? "index.html" : req.url);
   const ext = path.extname(filePath);

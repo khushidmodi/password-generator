@@ -92,7 +92,7 @@ legend {
 
 .output__row {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto auto auto;
   gap: 8px;
 }
 
@@ -145,6 +145,22 @@ button:focus-visible {
   margin: 0;
   color: var(--muted);
   font-size: 0.88rem;
+}
+
+.save-form {
+  margin-top: 4px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #f7faff;
+  display: grid;
+  gap: 8px;
+}
+
+.save-form__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .hint {
@@ -384,6 +400,66 @@ input[type="range"] {
   color: var(--muted);
 }
 
+.password-list {
+  display: grid;
+  gap: 10px;
+}
+
+.password-record {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.password-record__site {
+  margin: 0;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.password-record__detail {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 10px;
+  font-size: 0.92rem;
+}
+
+.password-record__detail span {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.password-record__detail strong {
+  color: var(--ink);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.password-record__password-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.password-toggle-btn {
+  border: 1px solid #c8d8f8;
+  background: #eef4ff;
+  color: var(--accent-2);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.password-toggle-btn:hover {
+  background: #e4efff;
+}
+
 .input-error {
   border-color: var(--danger) !important;
   outline: 2px solid var(--danger);
@@ -496,6 +572,11 @@ input[type="range"] {
   }
 
   .output__row {
+    grid-template-columns: 1fr;
+  }
+
+  .save-form__actions {
+    display: grid;
     grid-template-columns: 1fr;
   }
 
