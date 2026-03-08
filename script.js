@@ -313,6 +313,11 @@ async function saveGeneratedPassword(event) {
   const username = saveUsernameEl.value.trim();
   const password = savePasswordEl.value;
 
+  if (!passwordKey) {
+    copyStatusEl.textContent = "Unlock the Password Vault first before saving.";
+    return;
+  }
+
   if (!website || !username || !password) {
     copyStatusEl.textContent = "Website and username are required.";
     return;
@@ -392,10 +397,8 @@ tabs.forEach((tab) => {
 });
 
 // ─── Credit Card Vault (AES-GCM encrypted localStorage) ──────────
-const VAULT_STORAGE_KEY = "cc_vault_enc";
-const VAULT_SALT_KEY = "cc_vault_salt";
-const PASSWORD_STORAGE_KEY = "password_records_enc";
-const PASSWORD_KEY_STORAGE_KEY = "password_records_key";
+let currentCcSalt = null;
+let currentPwSalt = null;
 
 const masterPasswordEl = document.getElementById("masterPassword");
 const unlockVaultBtn = document.getElementById("unlockVaultBtn");
@@ -407,6 +410,13 @@ const addCardFormEl = document.getElementById("addCardForm");
 const cardListEl = document.getElementById("cardList");
 const noCardsEl = document.getElementById("noCards");
 
+const pwMasterPasswordEl = document.getElementById("pwMasterPassword");
+const unlockPwVaultBtn = document.getElementById("unlockPwVaultBtn");
+const lockPwVaultBtn = document.getElementById("lockPwVaultBtn");
+const pwVaultStatusEl = document.getElementById("pwVaultStatus");
+const pwVaultLockEl = document.getElementById("pwVaultLock");
+const pwVaultContentEl = document.getElementById("pwVaultContent");
+
 const showCardFormBtn = document.getElementById("showCardFormBtn");
 const cardFormWrapper = document.getElementById("cardFormWrapper");
 const cancelCardBtn = document.getElementById("cancelCardBtn");
@@ -416,8 +426,30 @@ const cardHolderEl = document.getElementById("cardHolder");
 const cardNumberEl = document.getElementById("cardNumber");
 const cardExpiryEl = document.getElementById("cardExpiry");
 const cardCVVEl = document.getElementById("cardCVV");
+const cardNumberHint = document.getElementById("cardNumberHint");
+const cardExpiryHint = document.getElementById("cardExpiryHint");
+const cardCVVHint = document.getElementById("cardCVVHint");
 const passwordRecordListEl = document.getElementById("passwordRecordList");
 const noPasswordRecordsEl = document.getElementById("noPasswordRecords");
+
+function showFieldError(input, hint, message) {
+  input.classList.add("input-error");
+  hint.textContent = message;
+  hint.classList.remove("hidden");
+  input.focus();
+}
+
+function clearFieldError(input, hint) {
+  input.classList.remove("input-error");
+  hint.textContent = "";
+  hint.classList.add("hidden");
+}
+
+function clearAllCardErrors() {
+  clearFieldError(cardNumberEl, cardNumberHint);
+  clearFieldError(cardExpiryEl, cardExpiryHint);
+  clearFieldError(cardCVVEl, cardCVVHint);
+}
 
 let vaultKey = null;
 let vaultCards = [];
@@ -448,12 +480,8 @@ async function deriveKey(password, salt) {
   );
 }
 
-function getOrCreateSalt() {
-  const stored = localStorage.getItem(VAULT_SALT_KEY);
-  if (stored) return hex2buf(stored);
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  localStorage.setItem(VAULT_SALT_KEY, buf2hex(salt));
-  return salt;
+function createSalt() {
+  return crypto.getRandomValues(new Uint8Array(16));
 }
 
 async function encryptVault(key, data) {
@@ -479,7 +507,8 @@ async function saveVaultToFiles(encryptedData) {
       body: JSON.stringify({
         encrypted: {
           algorithm: "AES-256-GCM",
-          key_management: "Random AES key generated once and stored in localStorage",
+          key_derivation: "PBKDF2 (600000 iterations, SHA-256)",
+          salt: currentCcSalt,
           encrypted_data: encryptedData
         },
         decrypted: {
@@ -488,18 +517,28 @@ async function saveVaultToFiles(encryptedData) {
         }
       })
     });
+  } catch (_) {}
+}
+
+async function loadFromServer(url) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.error) return null;
+    return data;
   } catch (_) {
-    // Server not running, localStorage still works
+    return null;
   }
 }
 
 async function saveVault() {
   const encrypted = await encryptVault(vaultKey, vaultCards);
-  localStorage.setItem(VAULT_STORAGE_KEY, encrypted);
   await saveVaultToFiles(encrypted);
 }
 
-async function savePasswordRecordsToFiles(encryptedData) {
+async function savePasswordRecords() {
+  const encrypted = await encryptVault(passwordKey, passwordRecords);
   try {
     await fetch("/save-password-records", {
       method: "POST",
@@ -508,8 +547,8 @@ async function savePasswordRecordsToFiles(encryptedData) {
         encrypted: {
           algorithm: "AES-256-GCM",
           key_derivation: "PBKDF2 (600000 iterations, SHA-256)",
-          salt: localStorage.getItem(VAULT_SALT_KEY),
-          encrypted_data: encryptedData
+          salt: currentPwSalt,
+          encrypted_data: encrypted
         },
         decrypted: {
           description: "DEMO ONLY — Unencrypted password records (plaintext)",
@@ -517,60 +556,7 @@ async function savePasswordRecordsToFiles(encryptedData) {
         }
       })
     });
-  } catch (_) {
-    // Server not running, localStorage still works
-  }
-}
-
-async function savePasswordRecords() {
-  if (!passwordKey) {
-    passwordKey = await getOrCreatePasswordRecordsKey();
-  }
-  const encrypted = await encryptVault(passwordKey, passwordRecords);
-  localStorage.setItem(PASSWORD_STORAGE_KEY, encrypted);
-  await savePasswordRecordsToFiles(encrypted);
-}
-
-async function loadPasswordRecords() {
-  if (!passwordKey) {
-    passwordKey = await getOrCreatePasswordRecordsKey();
-  }
-  const stored = localStorage.getItem(PASSWORD_STORAGE_KEY);
-  if (!stored) {
-    passwordRecords = [];
-    return;
-  }
-
-  try {
-    passwordRecords = await decryptVault(passwordKey, stored);
-    if (!Array.isArray(passwordRecords)) {
-      passwordRecords = [];
-    }
-  } catch (_) {
-    passwordRecords = [];
-  }
-}
-
-async function getOrCreatePasswordRecordsKey() {
-  const storedKeyHex = localStorage.getItem(PASSWORD_KEY_STORAGE_KEY);
-  if (storedKeyHex) {
-    return crypto.subtle.importKey(
-      "raw",
-      hex2buf(storedKeyHex),
-      { name: "AES-GCM" },
-      false,
-      ["encrypt", "decrypt"]
-    );
-  }
-
-  const key = await crypto.subtle.generateKey(
-    { name: "AES-GCM", length: 256 },
-    true,
-    ["encrypt", "decrypt"]
-  );
-  const rawKey = await crypto.subtle.exportKey("raw", key);
-  localStorage.setItem(PASSWORD_KEY_STORAGE_KEY, buf2hex(rawKey));
-  return key;
+  } catch (_) {}
 }
 
 function renderPasswordRecords() {
@@ -691,18 +677,18 @@ function formatCardNumber(num) {
 }
 
 const CARD_PROVIDERS = [
-  { name: "Visa",       key: "visa",       pattern: /^4/,                   lengths: [13, 16, 19], cvv: 3 },
-  { name: "Mastercard", key: "mastercard",  pattern: /^(5[1-5]|2[2-7])/,    lengths: [16],         cvv: 3 },
-  { name: "Amex",       key: "amex",        pattern: /^3[47]/,              lengths: [15],         cvv: 4 },
-  { name: "Discover",   key: "discover",    pattern: /^(6011|65|644|649)/,  lengths: [16, 19],     cvv: 3 },
-  { name: "Diners Club",key: "diners",      pattern: /^(36|38|30[0-5])/,    lengths: [14, 16],     cvv: 3 },
-  { name: "JCB",        key: "jcb",         pattern: /^35(2[89]|[3-8])/,    lengths: [16, 19],     cvv: 3 },
-  { name: "UnionPay",   key: "unionpay",    pattern: /^62/,                 lengths: [16, 17, 18, 19], cvv: 3 },
+  { name: "Visa",        key: "visa",        prefix: /^4/,               lengths: [13, 16, 19], cvv: 3 },
+  { name: "Mastercard",  key: "mastercard",   prefix: /^(5[1-5]|2[2-7])/, lengths: [16],         cvv: 3 },
+  { name: "Amex",        key: "amex",         prefix: /^3[47]/,           lengths: [15],         cvv: 4 },
+  { name: "Discover",    key: "discover",     prefix: /^(6011|64[4-9]|65)/, lengths: [16, 19],   cvv: 3 },
+  { name: "Diners Club", key: "diners",       prefix: /^(36|38|30[0-5])/, lengths: [14, 16],     cvv: 3 },
+  { name: "JCB",         key: "jcb",          prefix: /^35(2[89]|[3-8])/, lengths: [16, 19],     cvv: 3 },
+  { name: "UnionPay",    key: "unionpay",     prefix: /^62/,              lengths: [16, 17, 18, 19], cvv: 3 },
 ];
 
 function detectProvider(digits) {
   for (const p of CARD_PROVIDERS) {
-    if (p.pattern.test(digits)) return p;
+    if (p.prefix.test(digits)) return p;
   }
   return null;
 }
@@ -733,7 +719,7 @@ cardNumberEl.addEventListener("input", () => {
   const maxDigits = provider ? Math.max(...provider.lengths) : 19;
   digits = digits.slice(0, maxDigits);
   cardNumberEl.value = digits.replace(/(.{4})/g, "$1 ").trim();
-  cardNumberEl.classList.remove("input-error");
+  clearFieldError(cardNumberEl, cardNumberHint);
 
   if (digits.length > 0 && provider) {
     cardProviderBadge.textContent = provider.name;
@@ -760,11 +746,11 @@ cardExpiryEl.addEventListener("input", () => {
     val = val.slice(0, 2) + "/" + val.slice(2);
   }
   cardExpiryEl.value = val;
-  cardExpiryEl.classList.remove("input-error");
+  clearFieldError(cardExpiryEl, cardExpiryHint);
 });
 
 cardCVVEl.addEventListener("input", () => {
-  cardCVVEl.classList.remove("input-error");
+  clearFieldError(cardCVVEl, cardCVVHint);
 });
 
 showCardFormBtn.addEventListener("click", () => {
@@ -778,6 +764,7 @@ cancelCardBtn.addEventListener("click", () => {
   addCardFormEl.reset();
   cardProviderBadge.textContent = "";
   cardProviderBadge.removeAttribute("data-provider");
+  clearAllCardErrors();
 });
 
 unlockVaultBtn.addEventListener("click", async () => {
@@ -787,13 +774,17 @@ unlockVaultBtn.addEventListener("click", async () => {
     return;
   }
 
-  const salt = getOrCreateSalt();
+  const fileData = await loadFromServer("/load-vault");
   try {
-    vaultKey = await deriveKey(pw, salt);
-    const stored = localStorage.getItem(VAULT_STORAGE_KEY);
-    if (stored) {
-      vaultCards = await decryptVault(vaultKey, stored);
+    if (fileData && fileData.salt && fileData.encrypted_data) {
+      const salt = hex2buf(fileData.salt);
+      currentCcSalt = fileData.salt;
+      vaultKey = await deriveKey(pw, salt);
+      vaultCards = await decryptVault(vaultKey, fileData.encrypted_data);
     } else {
+      const salt = createSalt();
+      currentCcSalt = buf2hex(salt);
+      vaultKey = await deriveKey(pw, salt);
       vaultCards = [];
     }
     vaultLockEl.classList.add("hidden");
@@ -817,57 +808,55 @@ lockVaultBtn.addEventListener("click", () => {
 
 addCardFormEl.addEventListener("submit", async (e) => {
   e.preventDefault();
+  clearAllCardErrors();
+
   const number = cardNumberEl.value.replace(/\s/g, "");
   const provider = detectProvider(number);
+  let hasError = false;
 
+  // Card number validation
   if (!/^\d{13,19}$/.test(number)) {
-    cardNumberEl.classList.add("input-error");
-    vaultStatusEl.textContent = "Invalid card number.";
-    cardNumberEl.focus();
-    return;
-  }
-  if (!provider) {
-    cardNumberEl.classList.add("input-error");
-    vaultStatusEl.textContent = "Unrecognized card provider.";
-    cardNumberEl.focus();
-    return;
-  }
-  if (!provider.lengths.includes(number.length)) {
-    cardNumberEl.classList.add("input-error");
-    vaultStatusEl.textContent = `${provider.name} card must be ${provider.lengths.join(" or ")} digits.`;
-    cardNumberEl.focus();
-    return;
-  }
-  if (!luhnCheck(number)) {
-    cardNumberEl.classList.add("input-error");
-    vaultStatusEl.textContent = "Card number failed validation check.";
-    cardNumberEl.focus();
-    return;
+    showFieldError(cardNumberEl, cardNumberHint, "Enter a valid card number (13–19 digits).");
+    hasError = true;
+  } else if (!provider) {
+    showFieldError(cardNumberEl, cardNumberHint, "Unrecognized card provider. Supported: Visa, Mastercard, Amex, Discover, Diners Club, JCB, UnionPay.");
+    hasError = true;
+  } else if (!provider.lengths.includes(number.length)) {
+    showFieldError(cardNumberEl, cardNumberHint, `${provider.name} requires ${provider.lengths.join(" or ")} digits. You entered ${number.length}.`);
+    hasError = true;
   }
 
-  const expiryValid = /^\d{2}\/\d{2}$/.test(cardExpiryEl.value);
-  if (expiryValid) {
-    const [mm] = cardExpiryEl.value.split("/").map(Number);
-    if (mm < 1 || mm > 12) {
-      cardExpiryEl.classList.add("input-error");
-      vaultStatusEl.textContent = "Invalid month. Expiry must be MM/YY.";
-      cardExpiryEl.focus();
-      return;
-    }
+  // Expiry validation
+  const expiryVal = cardExpiryEl.value;
+  const expiryMatch = /^\d{2}\/\d{2}$/.test(expiryVal);
+  if (!expiryMatch) {
+    showFieldError(cardExpiryEl, cardExpiryHint, "Use MM/YY format (e.g. 03/27).");
+    hasError = true;
   } else {
-    cardExpiryEl.classList.add("input-error");
-    vaultStatusEl.textContent = "Expiry must be MM/YY.";
-    cardExpiryEl.focus();
-    return;
+    const [mm, yy] = expiryVal.split("/").map(Number);
+    if (mm < 1 || mm > 12) {
+      showFieldError(cardExpiryEl, cardExpiryHint, "Month must be 01–12.");
+      hasError = true;
+    } else {
+      const now = new Date();
+      const currentMonth = now.getMonth() + 1;
+      const currentYear = now.getFullYear() % 100;
+      if (yy < currentYear || (yy === currentYear && mm < currentMonth)) {
+        showFieldError(cardExpiryEl, cardExpiryHint, "This card has expired. Enter a future date.");
+        hasError = true;
+      }
+    }
   }
 
-  const expectedCvv = provider.cvv;
-  if (cardCVVEl.value.length !== expectedCvv || !/^\d+$/.test(cardCVVEl.value)) {
-    cardCVVEl.classList.add("input-error");
-    vaultStatusEl.textContent = `${provider.name} CVV must be ${expectedCvv} digits.`;
-    cardCVVEl.focus();
-    return;
+  // CVV validation
+  const expectedCvv = provider ? provider.cvv : 3;
+  if (!/^\d+$/.test(cardCVVEl.value) || cardCVVEl.value.length !== expectedCvv) {
+    const provName = provider ? provider.name : "This card";
+    showFieldError(cardCVVEl, cardCVVHint, `${provName} requires a ${expectedCvv}-digit CVV.`);
+    hasError = true;
   }
+
+  if (hasError) return;
 
   vaultCards.push({
     nickname: cardNicknameEl.value.trim(),
@@ -885,10 +874,48 @@ addCardFormEl.addEventListener("submit", async (e) => {
   showCardFormBtn.classList.remove("hidden");
   cardProviderBadge.textContent = "";
   cardProviderBadge.removeAttribute("data-provider");
+  clearAllCardErrors();
   vaultStatusEl.textContent = "Card saved securely.";
 });
 
-(async () => {
-  await loadPasswordRecords();
-  renderPasswordRecords();
-})();
+unlockPwVaultBtn.addEventListener("click", async () => {
+  const pw = pwMasterPasswordEl.value;
+  if (!pw) {
+    pwVaultStatusEl.textContent = "Please enter a master password.";
+    return;
+  }
+
+  const fileData = await loadFromServer("/load-password-records");
+  try {
+    if (fileData && fileData.salt && fileData.encrypted_data) {
+      const salt = hex2buf(fileData.salt);
+      currentPwSalt = fileData.salt;
+      passwordKey = await deriveKey(pw, salt);
+      passwordRecords = await decryptVault(passwordKey, fileData.encrypted_data);
+      if (!Array.isArray(passwordRecords)) {
+        passwordRecords = [];
+      }
+    } else {
+      const salt = createSalt();
+      currentPwSalt = buf2hex(salt);
+      passwordKey = await deriveKey(pw, salt);
+      passwordRecords = [];
+    }
+    pwVaultLockEl.classList.add("hidden");
+    pwVaultContentEl.classList.remove("hidden");
+    pwVaultStatusEl.textContent = "";
+    renderPasswordRecords();
+  } catch (_) {
+    passwordKey = null;
+    pwVaultStatusEl.textContent = "Wrong password or corrupted vault.";
+  }
+});
+
+lockPwVaultBtn.addEventListener("click", () => {
+  passwordKey = null;
+  passwordRecords = [];
+  pwMasterPasswordEl.value = "";
+  pwVaultContentEl.classList.add("hidden");
+  pwVaultLockEl.classList.remove("hidden");
+  pwVaultStatusEl.textContent = "Vault locked.";
+});

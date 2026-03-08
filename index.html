@@ -103,9 +103,20 @@
         </div>
 
         <div id="passwordVaultTab" class="hidden">
-          <section class="vault-section">
+          <section id="pwVaultLock" class="vault-section">
+            <h2 class="vault-title">Password Vault</h2>
+            <p class="helper">Enter a master password to encrypt and protect your saved passwords.</p>
+            <div class="vault-unlock-row">
+              <input id="pwMasterPassword" type="password" placeholder="Master password" autocomplete="off" />
+              <button id="unlockPwVaultBtn" class="btn" type="button">Unlock</button>
+            </div>
+            <p id="pwVaultStatus" class="helper" role="status"></p>
+          </section>
+
+          <section id="pwVaultContent" class="vault-section hidden">
             <div class="vault-header">
               <h2 class="vault-title">Saved Passwords</h2>
+              <button id="lockPwVaultBtn" class="btn btn--ghost btn--sm" type="button">Lock Vault</button>
             </div>
             <div id="passwordRecordList" class="password-list"></div>
             <p id="noPasswordRecords" class="helper center">No passwords saved yet.</p>
@@ -146,15 +157,18 @@
                     <input id="cardNumber" type="text" placeholder="1234 5678 9012 3456" maxlength="19" autocomplete="off" required />
                     <span id="cardProviderBadge" class="provider-badge"></span>
                   </div>
+                  <p id="cardNumberHint" class="field-error hidden" role="alert"></p>
                 </div>
                 <div class="form-row">
                   <div class="form-field">
                     <label for="cardExpiry">Expiry (MM/YY)</label>
                     <input id="cardExpiry" type="text" placeholder="MM/YY" maxlength="5" autocomplete="off" required />
+                    <p id="cardExpiryHint" class="field-error hidden" role="alert"></p>
                   </div>
                   <div class="form-field">
                     <label for="cardCVV">CVV</label>
                     <input id="cardCVV" type="password" placeholder="***" maxlength="4" autocomplete="off" required />
+                    <p id="cardCVVHint" class="field-error hidden" role="alert"></p>
                   </div>
                 </div>
                 <div class="form-actions">

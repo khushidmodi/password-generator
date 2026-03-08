@@ -12,42 +12,63 @@ const MIME = {
   ".json": "application/json",
 };
 
+function readJsonFile(filePath) {
+  try {
+    return JSON.parse(fs.readFileSync(filePath, "utf8"));
+  } catch (_) {
+    return null;
+  }
+}
+
+function handlePost(req, res, callback) {
+  let body = "";
+  req.on("data", (chunk) => (body += chunk));
+  req.on("end", () => {
+    try {
+      callback(JSON.parse(body));
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ ok: true }));
+    } catch (e) {
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+  });
+}
+
+function handleGet(res, filePath) {
+  const data = readJsonFile(filePath);
+  res.writeHead(data ? 200 : 404, { "Content-Type": "application/json" });
+  res.end(JSON.stringify(data || { error: "not found" }));
+}
+
 const server = http.createServer((req, res) => {
-  // Handle vault file saves
+  // Credit card vault — save
   if (req.method === "POST" && req.url === "/save-vault") {
-    let body = "";
-    req.on("data", (chunk) => (body += chunk));
-    req.on("end", () => {
-      try {
-        const { encrypted, decrypted } = JSON.parse(body);
-        fs.writeFileSync(path.join(DIR, "vault_encrypted.json"), JSON.stringify(encrypted, null, 2));
-        fs.writeFileSync(path.join(DIR, "vault_decrypted.json"), JSON.stringify(decrypted, null, 2));
-        res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ ok: true }));
-      } catch (e) {
-        res.writeHead(500, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ error: e.message }));
-      }
+    handlePost(req, res, ({ encrypted, decrypted }) => {
+      fs.writeFileSync(path.join(DIR, "vault_encrypted.json"), JSON.stringify(encrypted, null, 2));
+      fs.writeFileSync(path.join(DIR, "vault_decrypted.json"), JSON.stringify(decrypted, null, 2));
     });
     return;
   }
 
-  // Handle password record file saves
+  // Credit card vault — load
+  if (req.method === "GET" && req.url === "/load-vault") {
+    handleGet(res, path.join(DIR, "vault_encrypted.json"));
+    return;
+  }
+
+  // Password records — save
   if (req.method === "POST" && req.url === "/save-password-records") {
-    let body = "";
-    req.on("data", (chunk) => (body += chunk));
-    req.on("end", () => {
-      try {
-        const { encrypted, decrypted } = JSON.parse(body);
-        fs.writeFileSync(path.join(DIR, "password-records-encrypted.json"), JSON.stringify(encrypted, null, 2));
-        fs.writeFileSync(path.join(DIR, "password-records-plaintext.json"), JSON.stringify(decrypted, null, 2));
-        res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ ok: true }));
-      } catch (e) {
-        res.writeHead(500, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ error: e.message }));
-      }
+    handlePost(req, res, ({ encrypted, decrypted }) => {
+      fs.writeFileSync(path.join(DIR, "password-records-encrypted.json"), JSON.stringify(encrypted, null, 2));
+      fs.writeFileSync(path.join(DIR, "password-records-plaintext.json"), JSON.stringify(decrypted, null, 2));
     });
+    return;
+  }
+
+  // Password records — load
+  if (req.method === "GET" && req.url === "/load-password-records") {
+    handleGet(res, path.join(DIR, "password-records-encrypted.json"));
     return;
   }
 

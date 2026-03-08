@@ -466,6 +466,14 @@ input[type="range"] {
   outline-offset: -1px;
 }
 
+.field-error {
+  margin: 4px 0 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--danger);
+  line-height: 1.3;
+}
+
 .form-field {
   display: grid;
   gap: 4px;
