@@ -10,6 +10,7 @@ const MIME = {
   ".css": "text/css",
   ".js": "application/javascript",
   ".json": "application/json",
+  ".svg": "image/svg+xml",
 };
 
 function readJsonFile(filePath) {

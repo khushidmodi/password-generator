@@ -384,15 +384,51 @@ const tabs = document.querySelectorAll(".tab");
 const generatorTab = document.getElementById("generatorTab");
 const passwordVaultTab = document.getElementById("passwordVaultTab");
 const vaultTab = document.getElementById("vaultTab");
+const autofillTab = document.getElementById("autofillTab");
+
+const panelEl = document.querySelector(".panel");
 
 tabs.forEach((tab) => {
   tab.addEventListener("click", () => {
     tabs.forEach((t) => t.classList.remove("tab--active"));
     tab.classList.add("tab--active");
     const target = tab.dataset.tab;
+
+    // Clear any leftover inline styles from a previous animation
+    panelEl.style.transition = "none";
+    panelEl.style.height = "";
+    panelEl.style.overflow = "";
+    void panelEl.offsetHeight;
+
+    const startHeight = panelEl.offsetHeight;
+
+    // Switch tabs to measure new height
     generatorTab.classList.toggle("hidden", target !== "generator");
     passwordVaultTab.classList.toggle("hidden", target !== "password-vault");
     vaultTab.classList.toggle("hidden", target !== "vault");
+    autofillTab.classList.toggle("hidden", target !== "autofill");
+    if (target === "autofill") refreshAutofillState();
+
+    const endHeight = panelEl.offsetHeight;
+
+    if (startHeight === endHeight) return;
+
+    // Lock to start height, force reflow, then animate to end
+    panelEl.style.height = startHeight + "px";
+    panelEl.style.overflow = "hidden";
+    void panelEl.offsetHeight;
+
+    panelEl.style.transition = "height 0.25s ease";
+    panelEl.style.height = endHeight + "px";
+
+    function onEnd(e) {
+      if (e.propertyName !== "height") return;
+      panelEl.style.height = "";
+      panelEl.style.overflow = "";
+      panelEl.style.transition = "";
+      panelEl.removeEventListener("transitionend", onEnd);
+    }
+    panelEl.addEventListener("transitionend", onEnd);
   });
 });
 
@@ -620,10 +656,11 @@ function renderCards() {
     const el = document.createElement("div");
     el.className = "stored-card";
     el.dataset.index = index;
-    const prov = card.provider || (detectProvider(card.number) || {}).name || "Unknown";
+    const provObj = detectProvider(card.number);
+    const provKey = provObj ? provObj.key : "unknown";
     el.innerHTML = `
       <div class="stored-card__top">
-        <span class="stored-card__nickname">${escapeHtml(card.nickname || "Card " + (index + 1))} <span class="stored-card__provider">${escapeHtml(prov)}</span></span>
+        <span class="stored-card__nickname">${escapeHtml(card.nickname || "Card " + (index + 1))} <span class="stored-card__provider">${getProviderLogo(provKey, 22)}</span></span>
         <div class="stored-card__actions">
           <button type="button" class="reveal-btn">Reveal</button>
           <button type="button" class="copy-card-btn">Copy #</button>
@@ -693,6 +730,13 @@ function detectProvider(digits) {
   return null;
 }
 
+function getProviderLogo(key, size = 32) {
+  const h = size, w = Math.round(size * 1.58);
+  const validKeys = ["visa", "mastercard", "amex", "discover", "diners", "jcb", "unionpay"];
+  const src = validKeys.includes(key) ? `icons/${key}.svg` : "icons/unknown.svg";
+  return `<img src="${src}" alt="${key}" width="${w}" height="${h}" style="border-radius:3px;">`;
+}
+
 function luhnCheck(digits) {
   let sum = 0;
   let alternate = false;
@@ -722,17 +766,17 @@ cardNumberEl.addEventListener("input", () => {
   clearFieldError(cardNumberEl, cardNumberHint);
 
   if (digits.length > 0 && provider) {
-    cardProviderBadge.textContent = provider.name;
+    cardProviderBadge.innerHTML = getProviderLogo(provider.key, 24);
     cardProviderBadge.dataset.provider = provider.key;
     cardCVVEl.maxLength = provider.cvv;
     cardCVVEl.placeholder = provider.cvv === 4 ? "****" : "***";
   } else if (digits.length > 0) {
-    cardProviderBadge.textContent = "Unknown";
+    cardProviderBadge.innerHTML = getProviderLogo("unknown", 24);
     cardProviderBadge.dataset.provider = "unknown";
     cardCVVEl.maxLength = 4;
     cardCVVEl.placeholder = "***";
   } else {
-    cardProviderBadge.textContent = "";
+    cardProviderBadge.innerHTML = "";
     cardProviderBadge.removeAttribute("data-provider");
     cardCVVEl.maxLength = 4;
     cardCVVEl.placeholder = "***";
@@ -762,7 +806,7 @@ cancelCardBtn.addEventListener("click", () => {
   cardFormWrapper.classList.add("hidden");
   showCardFormBtn.classList.remove("hidden");
   addCardFormEl.reset();
-  cardProviderBadge.textContent = "";
+  cardProviderBadge.innerHTML = "";
   cardProviderBadge.removeAttribute("data-provider");
   clearAllCardErrors();
 });
@@ -872,7 +916,7 @@ addCardFormEl.addEventListener("submit", async (e) => {
   addCardFormEl.reset();
   cardFormWrapper.classList.add("hidden");
   showCardFormBtn.classList.remove("hidden");
-  cardProviderBadge.textContent = "";
+  cardProviderBadge.innerHTML = "";
   cardProviderBadge.removeAttribute("data-provider");
   clearAllCardErrors();
   vaultStatusEl.textContent = "Card saved securely.";
@@ -918,4 +962,171 @@ lockPwVaultBtn.addEventListener("click", () => {
   pwVaultContentEl.classList.add("hidden");
   pwVaultLockEl.classList.remove("hidden");
   pwVaultStatusEl.textContent = "Vault locked.";
+});
+
+// ─── Autofill Demo ────────────────────────────────────────────────
+const MOCK_SITES = {
+  gmail: {
+    name: "Gmail",
+    url: "https://accounts.google.com/signin",
+    matchDomains: ["google.com", "gmail.com", "accounts.google.com"],
+    color: "#EA4335",
+    logo: "G"
+  },
+  youtube: {
+    name: "YouTube",
+    url: "https://accounts.google.com/signin (YouTube)",
+    matchDomains: ["youtube.com"],
+    color: "#FF0000",
+    logo: "\u25B6"
+  },
+  facebook: {
+    name: "Facebook",
+    url: "https://www.facebook.com/login",
+    matchDomains: ["facebook.com", "fb.com"],
+    color: "#1877F2",
+    logo: "f"
+  }
+};
+
+const afSiteGrid = document.getElementById("afSiteGrid");
+const afMockPage = document.getElementById("afMockPage");
+const afMockFrame = document.getElementById("afMockFrame");
+const afBackBtn = document.getElementById("afBackBtn");
+const afVaultWarning = document.getElementById("afVaultWarning");
+
+function normalizeDomain(raw) {
+  let d = raw.trim().toLowerCase();
+  d = d.replace(/^https?:\/\//, "");
+  d = d.replace(/\/.*$/, "");
+  d = d.replace(/^www\./, "");
+  return d;
+}
+
+function findMatchingCredentials(siteKey) {
+  const site = MOCK_SITES[siteKey];
+  if (!site || !passwordKey) return [];
+  return passwordRecords.filter((rec) => {
+    const domain = normalizeDomain(rec.website || "");
+    return site.matchDomains.some((md) => domain.includes(md) || md.includes(domain));
+  });
+}
+
+function renderMockLoginPage(siteKey) {
+  const site = MOCK_SITES[siteKey];
+  afMockFrame.innerHTML = "";
+
+  const header = document.createElement("div");
+  header.className = "af-brand-header";
+  header.innerHTML = `
+    <div class="af-logo" style="background:${site.color};color:#fff;">${site.logo}</div>
+    <h3>Sign in to ${escapeHtml(site.name)}</h3>
+    <span class="af-url-bar"><span class="af-lock">&#128274;</span>${escapeHtml(site.url)}</span>
+  `;
+
+  const form = document.createElement("div");
+  form.className = "af-login-form";
+
+  const emailField = document.createElement("div");
+  emailField.className = "af-field";
+  emailField.innerHTML = `<label>Email or phone</label>`;
+  const emailInput = document.createElement("input");
+  emailInput.type = "text";
+  emailInput.placeholder = "Enter your email";
+  emailField.appendChild(emailInput);
+
+  const passField = document.createElement("div");
+  passField.className = "af-field";
+  passField.innerHTML = `<label>Password</label>`;
+  const passInput = document.createElement("input");
+  passInput.type = "password";
+  passInput.placeholder = "Enter your password";
+  passField.appendChild(passInput);
+
+  const signInBtn = document.createElement("button");
+  signInBtn.className = "af-signin-btn";
+  signInBtn.style.background = site.color;
+  signInBtn.textContent = "Sign in";
+
+  form.append(emailField, passField, signInBtn);
+  afMockFrame.append(header, form);
+
+  showAutofillPopup(siteKey, emailInput, passInput, emailField);
+}
+
+function showAutofillPopup(siteKey, emailInput, passInput, emailField) {
+  const matches = findMatchingCredentials(siteKey);
+  if (matches.length === 0) return;
+
+  const popup = document.createElement("div");
+  popup.className = "af-popup";
+  const title = document.createElement("p");
+  title.className = "af-popup-title";
+  title.textContent = "Password Manager — saved credentials";
+  popup.appendChild(title);
+
+  matches.forEach((cred) => {
+    const row = document.createElement("div");
+    row.className = "af-popup-row";
+
+    const info = document.createElement("div");
+    info.className = "af-popup-row-info";
+    const user = document.createElement("span");
+    user.className = "af-popup-user";
+    user.textContent = cred.username;
+    const pass = document.createElement("span");
+    pass.className = "af-popup-pass";
+    pass.textContent = "\u2022".repeat(Math.min(cred.password.length, 12));
+    info.append(user, pass);
+
+    const fillBtn = document.createElement("button");
+    fillBtn.className = "af-popup-fill-btn";
+    fillBtn.textContent = "Fill";
+    fillBtn.addEventListener("click", () => {
+      emailInput.value = cred.username;
+      passInput.value = cred.password;
+      emailInput.classList.add("af-filled");
+      passInput.classList.add("af-filled");
+      popup.classList.add("af-popup--used");
+      title.textContent = "\u2713 Credentials filled";
+      setTimeout(() => {
+        popup.style.overflow = "hidden";
+        popup.style.maxHeight = popup.scrollHeight + "px";
+        popup.style.transition = "opacity 0.3s ease, max-height 0.3s ease, margin 0.3s ease, padding 0.3s ease";
+        requestAnimationFrame(() => {
+          popup.style.opacity = "0";
+          popup.style.maxHeight = "0";
+          popup.style.margin = "0";
+          popup.style.padding = "0";
+        });
+        setTimeout(() => popup.remove(), 300);
+      }, 800);
+    });
+
+    row.append(info, fillBtn);
+    popup.appendChild(row);
+  });
+
+  emailField.appendChild(popup);
+}
+
+function refreshAutofillState() {
+  const locked = passwordKey === null;
+  afVaultWarning.classList.toggle("hidden", !locked);
+}
+
+afSiteGrid.addEventListener("click", (e) => {
+  const card = e.target.closest(".af-site-card");
+  if (!card) return;
+  const siteKey = card.dataset.site;
+  if (!MOCK_SITES[siteKey]) return;
+  afSiteGrid.classList.add("hidden");
+  afMockPage.classList.remove("hidden");
+  renderMockLoginPage(siteKey);
+});
+
+afBackBtn.addEventListener("click", () => {
+  afMockPage.classList.add("hidden");
+  afSiteGrid.classList.remove("hidden");
+  afMockFrame.innerHTML = "";
 });

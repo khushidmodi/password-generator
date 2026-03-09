@@ -2,34 +2,18 @@
   "description": "DEMO ONLY — Unencrypted credit card vault (plaintext)",
   "cards": [
     {
-      "nickname": "Nick",
-      "holder": "Test",
-      "number": "4242424242424242",
-      "expiry": "01/10",
+      "nickname": "Personal Card",
+      "holder": "Chanakya",
+      "number": "5345641231365654",
+      "expiry": "01/30",
       "cvv": "123",
-      "provider": "Visa"
+      "provider": "Mastercard"
     },
     {
-      "nickname": "NIcke 2",
-      "holder": "Testing Testing",
-      "number": "4242424242424242",
-      "expiry": "01/22",
-      "cvv": "123",
-      "provider": "Visa"
-    },
-    {
-      "nickname": "EEE",
-      "holder": "Shake",
-      "number": "4234234234234234",
-      "expiry": "01/27",
-      "cvv": "123",
-      "provider": "Visa"
-    },
-    {
-      "nickname": "Tests",
-      "holder": "Testrs",
-      "number": "4455234234234234",
-      "expiry": "01/27",
+      "nickname": "Business Card",
+      "holder": "Chanakya",
+      "number": "4265468497496545",
+      "expiry": "12/32",
       "cvv": "123",
       "provider": "Visa"
     }

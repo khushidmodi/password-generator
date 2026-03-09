@@ -19,6 +19,7 @@
           <button class="tab tab--active" data-tab="generator">Password Generator</button>
           <button class="tab" data-tab="password-vault">Password Vault</button>
           <button class="tab" data-tab="vault">Credit Card Vault</button>
+          <button class="tab" data-tab="autofill">Autofill Demo</button>
         </nav>
 
         <div id="generatorTab">
@@ -184,6 +185,40 @@
             <div id="exportButtons" class="export-row hidden">
               <button id="exportEncBtn" class="btn btn--ghost btn--sm" type="button">Download Encrypted</button>
               <button id="exportDecBtn" class="btn btn--ghost btn--sm" type="button">Download Decrypted (Demo)</button>
+            </div>
+          </section>
+        </div>
+
+        <div id="autofillTab" class="hidden">
+          <section class="vault-section">
+            <h2 class="vault-title">Autofill Demo</h2>
+            <p class="helper">Simulate autofilling login forms on mock websites. Unlock the Password Vault and save credentials for google.com, youtube.com, or facebook.com to see autofill in action.</p>
+
+            <div id="afVaultWarning" class="af-vault-warning hidden">
+              Password Vault is locked. Unlock it first to use autofill.
+            </div>
+
+            <div id="afSiteGrid" class="af-site-grid">
+              <button class="af-site-card" data-site="gmail">
+                <div class="af-site-icon" style="background:#EA4335;color:#fff;">G</div>
+                <strong>Gmail</strong>
+                <span class="af-site-url">mail.google.com</span>
+              </button>
+              <button class="af-site-card" data-site="youtube">
+                <div class="af-site-icon" style="background:#FF0000;color:#fff;">&#9654;</div>
+                <strong>YouTube</strong>
+                <span class="af-site-url">youtube.com</span>
+              </button>
+              <button class="af-site-card" data-site="facebook">
+                <div class="af-site-icon" style="background:#1877F2;color:#fff;">f</div>
+                <strong>Facebook</strong>
+                <span class="af-site-url">facebook.com</span>
+              </button>
+            </div>
+
+            <div id="afMockPage" class="hidden">
+              <button id="afBackBtn" class="btn btn--ghost btn--sm" type="button">&larr; Back to sites</button>
+              <div id="afMockFrame" class="af-mock-frame"></div>
             </div>
           </section>
         </div>
